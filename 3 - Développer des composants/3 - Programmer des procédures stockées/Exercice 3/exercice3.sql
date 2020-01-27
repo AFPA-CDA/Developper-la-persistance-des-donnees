@@ -11,7 +11,7 @@ CREATE PROCEDURE CA_Fournisseur(
 
 BEGIN
   SELECT `fournis`.`nomfou` AS `Fournisseurs`,
-  SUM(`ligcom`.`qteliv` * `ligcom`.`priuni`) * 1.2 AS `CA`
+  SUM(`ligcom`.`priuni` * `ligcom`.`qteliv`) * 1.2 AS `CA`
   FROM (((`fournis`
   INNER JOIN `vente` ON `vente`.`numfou` = `fournis`.`numfou`)
   INNER JOIN `ligcom` ON `ligcom`.`codart` = `vente`.`codart`)

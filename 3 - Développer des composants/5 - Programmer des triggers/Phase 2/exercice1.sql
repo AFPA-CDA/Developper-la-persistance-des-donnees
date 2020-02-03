@@ -1,16 +1,17 @@
-CREATE TABLE `ARTICLES_A_COMMANDER` (
+CREATE TABLE IF NOT EXISTS `articles_a_commander` (
   `codart` CHAR(4),
-  `date` DATE DEFAULT CURRENT_TIMESTAMP,
-  `qte_comm` INT,
-  PRIMARY KEY (`codart`, `date_alert`),
+  `date` DATE,
+  `qte` INT,
+  PRIMARY KEY (`codart`, `date`),
   FOREIGN KEY (`codart`) REFERENCES `produit`(`codart`)
 );
 
 DELIMITER |
 
-DROP PROCEDURE IF EXISTS `commande_alerte`;
+DROP TRIGGER IF EXISTS `commande_alerte`;
 
-CREATE PROCEDURE `commande_alerte`(IN `Code Article` CHAR(4))
+CREATE TRIGGER `commande_alerte` AFTER UPDATE
+ON `articles_a_commander` FOR EACH ROW
 BEGIN
   DECLARE `Stock Alerte` INT;
   DECLARE `Stock Physique` INT;
@@ -20,20 +21,30 @@ BEGIN
   SET `Stock Alerte` = (
     SELECT `stkale`
     FROM `produit`
-    WHERE `codart` = `Code Article`
+    WHERE `codart` = NEW.`codart`
   );
 
   SET `Stock Physique` = (
     SELECT `stkphy`
     FROM `produit`
-    WHERE `codart` = `Code Article`
+    WHERE `codart` = NEW.`codart`
   );
 
   SET `Quantité à Commander` = `Stock Alerte` - `Stock Physique`;
 
-  IF (SELECT COUNT(`codart`) FROM `ARTICLES_A_COMMANDER` WHERE `codart` = `Code Article`) > 0 THEN
-    
+  IF (SELECT COUNT(`codart`) FROM `articles_a_commander` WHERE `codart` = NEW.`codart`) > 0 THEN
+    SET `Quantité Finale` = `Quantité à Commander` - ( 
+      SELECT SUM(`qte`)
+      FROM `articles_a_commander`
+      WHERE `codart` = NEW.`codart`
+    );
+  ELSEIF `Stock Alerte` > `Stock Physique` THEN
+    INSERT INTO `articles_a_commander`(`codart`, `qte`, `date`) VALUES (NEW.`codart`, `Quantité Finale`, NOW());
+  ELSE
+    SET `Quantité Finale` = `Quantité à Commander`;
   END IF;
 END |
 
 DELIMITER ;
+
+UPDATE `produit` SET `stkphy` = 50 WHERE `codart` = 'I100';
